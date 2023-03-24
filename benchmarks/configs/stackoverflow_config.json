@@ -1,0 +1,57 @@
+{
+    "config": {
+        "trainer": {
+            "_base_": "base_sync_trainer",
+            "server": {
+                "_base_": "base_sync_server",
+                "server_optimizer": {
+                    "_base_": "base_fed_adam",
+                    "lr": 0.001
+                },
+                "active_user_selector": {
+                    "_base_": "base_uniformly_random_active_user_selector"
+                }
+            },
+            "client": {
+                "_base_": "base_client",
+                "optimizer": {
+                    "lr": 1e-5,
+                    "momentum": 0.9,
+                    "_base_": "base_optimizer_sgd"
+                },
+                "epochs": 1
+            },
+            "users_per_round": 10,
+            "epochs": 1,
+            "always_keep_trained_model": false,
+            "train_metrics_reported_per_epoch": 100,
+            "report_train_metrics": true,
+            "eval_epoch_frequency": 0.1,
+            "do_eval": true,
+            "report_train_metrics_after_aggregation": true
+        },
+        "data": {
+            "train_batch_size": 16,
+            "eval_batch_size": 16,
+            "max_seq_len": 64,
+            "max_samples": 200,
+            "num_users": 200,
+            "train_path": "tf_stackoverflow_train_35067.json",
+            "eval_path": "tf_stackoverflow_eval_378.json",
+            "test_path": "tf_stackoverflow_test_1115.json",
+            "tokenizer_path": "model/transformers/gpt2-tokenizer"
+        },
+        "model": {
+            "n_hidden": 128,
+            "num_layers": 2,
+            "vocab_size": 50257,
+            "embedding_size": 128,
+            "pretrained": true,
+            "model_path": "model/lm/distilgpt2",
+            "seed": 0
+        },
+        "distributed_world_size": 1,
+        "use_cuda_if_available": true,
+        "memory_requirement": "50G"
+    }
+}
