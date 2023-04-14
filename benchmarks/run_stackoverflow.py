@@ -18,9 +18,7 @@ import hydra
 import numpy as np
 import torch
 import torch.nn as nn
-from flsim.baselines.utils import set_random_seed
 from flsim.data.data_provider import IFLDataProvider, IFLUserData
-from flsim.fb.process_state import FBProcessState
 from flsim.interfaces.batch_metrics import IFLBatchMetrics
 from flsim.interfaces.metrics_reporter import Channel
 from flsim.metrics_reporter.tensorboard_metrics_reporter import FLMetricsReporter
@@ -32,6 +30,7 @@ from omegaconf import DictConfig
 from torch.utils.data import Dataset
 from tqdm import tqdm
 from transformers import AutoConfig, AutoModelForCausalLM, GPT2Tokenizer
+from .utils import set_random_seed
 
 
 class StackoverflowDataset(Dataset):
@@ -81,8 +80,7 @@ class StackoverflowUserData(IFLUserData):
                 max_seq_len=max_seq_len,
                 max_samples=max_samples,
             )
-            eval_batches = list(
-                batchify(tokens, eval_batch_size, drop_last=False))
+            eval_batches = list(batchify(tokens, eval_batch_size, drop_last=False))
             self.clean_batches(eval_batches)
             self.eval_batches = eval_batches
         else:
@@ -92,8 +90,7 @@ class StackoverflowUserData(IFLUserData):
                 max_seq_len=max_seq_len,
                 max_samples=max_samples,
             )
-            train_batches = list(
-                batchify(tokens, train_batch_size, drop_last=False))
+            train_batches = list(batchify(tokens, train_batch_size, drop_last=False))
             self.clean_batches(train_batches)
             self.train_batches = train_batches
 
@@ -288,7 +285,6 @@ class FLModel(IFLModel):
         vocab_size: int,
         device: Optional[str] = None,
     ) -> None:
-
         # Replace the original embedding module by a new embedding whose vocab size
         # is enlarged by 1 to create room for pad_idx.
         # pyre-fixme[16]: Item `Tensor` of `Union[Tensor, Module]` has no attribute
@@ -298,8 +294,7 @@ class FLModel(IFLModel):
         #  `wte`.
         dim = model.transformer.wte.weight.shape[1]
         pad_idx = vocab_size
-        extended_embedding = nn.Embedding(
-            vocab_size + 1, dim, padding_idx=pad_idx)
+        extended_embedding = nn.Embedding(vocab_size + 1, dim, padding_idx=pad_idx)
         extended_weight = torch.cat([cached_embedding, torch.zeros(1, dim)])
         del cached_embedding
         extended_embedding.load_state_dict({"weight": extended_weight})
@@ -311,11 +306,9 @@ class FLModel(IFLModel):
         self.device = device
 
         self.pad_idx: int = pad_idx
-        self.cross_entropy_loss: nn.Module = nn.CrossEntropyLoss(
-            ignore_index=pad_idx)
+        self.cross_entropy_loss: nn.Module = nn.CrossEntropyLoss(ignore_index=pad_idx)
 
     def fl_forward(self, batch) -> BatchMetrics:
-
         tokens = batch
         tokens = torch._C._nn.pad_sequence(
             tokens, batch_first=True, padding_value=float(self.pad_idx)
@@ -325,8 +318,7 @@ class FLModel(IFLModel):
             tokens = tokens.to(self.device)
 
         output, _ = self.model(tokens)
-        loss, num_correct, num_examples = self.cross_entropy_eval(
-            output, tokens)
+        loss, num_correct, num_examples = self.cross_entropy_eval(output, tokens)
         loss = loss.cpu()
         del output
         del tokens
@@ -399,8 +391,7 @@ class MetricsReporter(FLMetricsReporter):
         self.num_batches += 1
 
     def compare_metrics(self, eval_metrics, best_metrics):
-        print(
-            f"Current eval accuracy: {eval_metrics}%, Best so far: {best_metrics}%")
+        print(f"Current eval accuracy: {eval_metrics}%, Best so far: {best_metrics}%")
         if best_metrics is None:
             return True
         return eval_metrics[self.PPL] < best_metrics[self.PPL]
@@ -425,9 +416,8 @@ class MetricsReporter(FLMetricsReporter):
         self.losses = []
 
 
-def train(cfg, fb_info=None, rank: int = 0, world_size: int = 1):
+def train(cfg):
     cuda_enabled = torch.cuda.is_available()
-    FBProcessState.getInstance(rank=rank, fb_info=fb_info)
     device = torch.device("cuda:0" if cuda_enabled else "cpu")
     set_random_seed(cfg.model.seed, use_cuda=cuda_enabled)
 
@@ -463,7 +453,8 @@ def train(cfg, fb_info=None, rank: int = 0, world_size: int = 1):
         print(f"Trainable parameters count: {trainable_params / 1e6}M")
     else:
         model = AutoModelForCausalLM.from_config(
-            AutoConfig.from_pretrained(cfg.model.model_path))
+            AutoConfig.from_pretrained(cfg.model.model_path)
+        )
 
     # pyre-fixme[6]
     fl_model = FLModel(model, tokenizer.vocab_size, device)

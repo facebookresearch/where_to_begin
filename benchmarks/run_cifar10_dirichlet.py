@@ -11,12 +11,16 @@ The dataset must be created beforehand using this notebook https://colab.researc
 """
 from typing import Dict, NamedTuple
 
-import flsim.fb.configs  # noqa
 import hydra  # @manual
 import torch
 
-from flsim.baselines.data.data_providers import LEAFDataLoader, LEAFDataProvider
-from .utils import get_cnn_model, set_random_seed
+from .utils import (
+    get_cnn_model,
+    set_random_seed,
+    LEAFDataLoader,
+    LEAFDataProvider,
+    LEAFUserData,
+)
 
 
 from flsim.metrics_reporter.tensorboard_metrics_reporter import FLMetricsReporter
@@ -36,7 +40,6 @@ from typing import Optional
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from flsim.baselines.data.data_providers import LEAFUserData
 from flsim.interfaces.model import IFLModel
 from flsim.utils.simple_batch_metrics import FLBatchMetrics
 
@@ -109,8 +112,7 @@ class CVMetricsReporter(FLMetricsReporter):
         self._round_to_target = float(1e10)
 
     def compare_metrics(self, eval_metrics, best_metrics):
-        print(
-            f"Current eval accuracy: {eval_metrics}%, Best so far: {best_metrics}%")
+        print(f"Current eval accuracy: {eval_metrics}%, Best so far: {best_metrics}%")
         if best_metrics is None:
             return True
 
@@ -174,12 +176,10 @@ class CIFAROutput(NamedTuple):
 def build_data_provider(
     data_config, drop_last: bool = False, use_cifar100: bool = False
 ):
-
     transform = transforms.Compose(
         [
             transforms.ToTensor(),
-            transforms.Normalize((0.4914, 0.4822, 0.4465),
-                                 (0.2023, 0.1994, 0.2010)),
+            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
         ]
     )
 
@@ -212,7 +212,6 @@ def train(
     world_size: int = 1,
     rank: int = 0,
 ) -> CIFAROutput:
-
     cuda_enabled = torch.cuda.is_available() and use_cuda_if_available
     device = torch.device(f"cuda:{rank}" if cuda_enabled else "cpu")
     set_random_seed(model_config.seed, cuda_enabled)
@@ -245,8 +244,7 @@ def train(
     if cuda_enabled:
         global_model.fl_cuda()
 
-    trainer = instantiate(
-        trainer_config, model=global_model, cuda_enabled=cuda_enabled)
+    trainer = instantiate(trainer_config, model=global_model, cuda_enabled=cuda_enabled)
     print(f"Created {trainer_config._target_}")
 
     final_model, eval_score = trainer.train(
